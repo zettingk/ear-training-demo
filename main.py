@@ -1,10 +1,11 @@
 import sys
 import pygame
 import pygame.midi
+import asyncio
 from mingus.containers import Note
 
 import audio
-
+import game
 
 pygame.init()
 pygame.display.init()
@@ -15,11 +16,13 @@ INSTRUMENT = 1
 BG_COLOR = (255, 255, 255)
 
 
-def main():
+async def main():
     midi_port = pygame.midi.get_default_output_id()
     midi_output = pygame.midi.Output(midi_port)
     midi_output.set_instrument(INSTRUMENT)
     window = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+
+    game_task = asyncio.create_task(game.on_start(midi_output))
 
     while True:
         for event in pygame.event.get():
@@ -40,6 +43,8 @@ def main():
         window.fill(BG_COLOR)
         pygame.display.update()
 
+        await asyncio.sleep(0)
+
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
