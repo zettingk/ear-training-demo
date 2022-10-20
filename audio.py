@@ -1,20 +1,17 @@
-from mingus.containers import Note
-import pygame
+import pygame.midi
 
-DEFAULT_VELOCITY = 127
+pygame.midi.init()
 
+INSTRUMENT: int = 1
 
-def note_to_midi(note: Note) -> int:
-    return int(note) + 12
-
-
-def note_on(midi_output: pygame.midi.Output, note: Note) -> None:
-    velocity = note.velocity if note.velocity is not None else DEFAULT_VELOCITY
-
-    midi_output.note_on(note_to_midi(note), velocity)
+midi_port = pygame.midi.get_default_output_id()
+midi_output = pygame.midi.Output(midi_port)
+midi_output.set_instrument(INSTRUMENT)
 
 
-def note_off(midi_output: pygame.midi.Output, note: Note) -> None:
-    velocity = note.velocity if note.velocity is not None else DEFAULT_VELOCITY
-    
-    midi_output.note_off(note_to_midi(note), velocity)
+def note_on(note: int, velocity: int = 127) -> None:
+    midi_output.note_on(note, velocity)
+
+
+def note_off(note: int) -> None:
+    midi_output.note_off(note, 0)

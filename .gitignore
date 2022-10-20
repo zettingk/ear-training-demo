@@ -9,3 +9,5 @@ pyvenv.cfg
 Include/
 Lib/
 Scripts/
+
+pyproject.toml

@@ -1,50 +1,53 @@
 import sys
+import asyncio
+from typing import Callable
+from collections.abc import Awaitable
 import pygame
 import pygame.midi
-import asyncio
-from mingus.containers import Note
 
-import audio
-import game
+from game import game1
 
 pygame.init()
 pygame.display.init()
 pygame.midi.init()
 
 
-INSTRUMENT = 1
 BG_COLOR = (255, 255, 255)
 
+class Context:
+    def __init__(self):
+        self.key_events = {}
 
-async def main():
-    midi_port = pygame.midi.get_default_output_id()
-    midi_output = pygame.midi.Output(midi_port)
-    midi_output.set_instrument(INSTRUMENT)
-    window = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+    def on_keystroke(self, key: int, coro: Callable[[], Awaitable[None]]):
+        self.key_events[key] = coro
+        
 
-    game_task = asyncio.create_task(game.on_start(midi_output))
+async def main() -> None:
+    window = pygame.display.set_mode((800, 600))
+
+    ctx = Context()
+    asyncio.create_task(game1.on_start(ctx))
 
     while True:
         for event in pygame.event.get():
+            
             if event.type == pygame.QUIT:
                 sys.exit()
+
             elif event.type == pygame.KEYDOWN:
+                if coro := ctx.key_events.get(event.key):
+                    asyncio.create_task(coro())
+
                 if event.key == pygame.K_ESCAPE:
                     pygame.quit()
                     sys.exit()
 
-                if event.key == pygame.K_c:
-                    audio.note_on(midi_output, Note("C"))
-
-            elif event.type == pygame.KEYUP:
-                if event.key == pygame.K_c:
-                    audio.note_off(midi_output, Note("C"))
-
         window.fill(BG_COLOR)
         pygame.display.update()
 
-        await asyncio.sleep(0)
+        await asyncio.sleep(0) # allow game coroutines to run
 
 
 if __name__ == "__main__":
     asyncio.run(main())
+
