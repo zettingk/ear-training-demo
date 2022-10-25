@@ -60,11 +60,11 @@ def note_from_str(s: str) -> int:
 
     return octave * 12 + white_note_offset + accidental_offset
 
-def format_note_as_str(note: int) -> str:
+def format_note_as_str(note: int, ascii=False) -> str:
     octave = note // 12
     accidental = ""
     if is_black(note):
-        accidental = "♯"
+        accidental = "#" if ascii else "♯"
         note -= 1
 
     white_note = _get_key_from_value(NOTE_OFFSET, note % 12)
