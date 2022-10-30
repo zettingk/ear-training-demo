@@ -24,7 +24,7 @@ async def main() -> None:
 
     window = pygame.display.set_mode((800, 600))
 
-    ctx = Context()
+    ctx = Context(window)
     asyncio.create_task(game1.on_start(ctx))
 
     midi_input_id = pygame.midi.get_default_input_id()
@@ -52,6 +52,7 @@ async def main() -> None:
                 ctx.fire_events(KeystrokeEvent(event.key, False))
 
         window.fill(BACKGROUND_COLOR)
+        game1.on_update(ctx)
     
         if midi_input is not None:
             while midi_input.poll():

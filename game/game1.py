@@ -15,6 +15,9 @@ async def play_note(evt: KeyEvent):
     else:
         audio.note_off(evt.key)
 
+def on_update(ctx: Context) -> None:
+    ctx.draw_text('hello', (50, 50))
+
 async def on_start(ctx: Context) -> None:
     ctx.register_event_handler(KeyEvent, play_note)
     print(f"Play the keys you hear!")

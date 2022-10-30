@@ -1,4 +1,5 @@
 import asyncio
+import pygame
 from typing import Type, TypeVar, Callable
 from events import Event
 
@@ -13,6 +14,8 @@ def generate_id():
 
     return prev_id
 
+pygame.font.init()
+FONT = pygame.font.SysFont("Arial", 12)
 
 class Context:
     '''
@@ -25,10 +28,18 @@ class Context:
     many times.
     '''
 
-    def __init__(self):
+    def __init__(self, surface: pygame.surface.Surface):
+        self.surface = surface
         self.callbacks = []
         self.event_handlers = []
         self.await_queues = []
+
+    def draw_text(self, text: str, position: tuple[int, int]):
+        rendered_text = FONT.render(text, True, (0, 0, 0))
+        self.draw_surface(rendered_text, position)
+
+    def draw_surface(self, surf: pygame.surface.Surface, position: tuple[int, int]):
+        self.surface.blit(surf, position)
 
     def cancel(self, handler_id: int) -> None:
         '''
