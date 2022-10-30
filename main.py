@@ -1,4 +1,5 @@
 import sys
+import audio
 from context import Context
 import asyncio
 import pygame
@@ -68,14 +69,15 @@ async def main() -> None:
 
                 if hovering_over is not None and hovering_over not in keyboard_emulator.keys_pressed:
                     ctx.fire_events(KeyEvent(hovering_over, 127))
+                    audio.note_on(hovering_over, 127)
 
                     keyboard_emulator.keys_pressed.add(hovering_over)
             else:
                 for k in keyboard_emulator.keys_pressed:
                     ctx.fire_events(KeyEvent(k, 0))
+                    audio.note_off(k)
                 
                 keyboard_emulator.keys_pressed = set()
-
             keyboard_emulator.draw()
 
 

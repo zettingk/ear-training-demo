@@ -6,20 +6,16 @@ from notes import note_from_str, generate_notes, format_note_as_str
 
 import audio
 
+
 BASE_NOTE = note_from_str("C")
 SEQUENCE_LENGTH = 3
 
-async def play_note(evt: KeyEvent):
-    if evt.velocity != 0:
-        audio.note_on(evt.key, evt.velocity)
-    else:
-        audio.note_off(evt.key)
 
 def on_update(ctx: Context) -> None:
     ctx.draw_text('hello', (50, 50))
 
+
 async def on_start(ctx: Context) -> None:
-    ctx.register_event_handler(KeyEvent, play_note)
     print(f"Play the keys you hear!")
 
     while True:
@@ -43,5 +39,4 @@ async def on_start(ctx: Context) -> None:
         print(f"{correct}/{SEQUENCE_LENGTH}. Next round...")
 
         await asyncio.sleep(1)
-
 
