@@ -21,7 +21,7 @@ def is_mouse_pressed() -> bool:
 
 
 async def main() -> None:
-    game = Game('game1')
+    game = Game('trills')
 
     window = pygame.display.set_mode((800, 600))
 

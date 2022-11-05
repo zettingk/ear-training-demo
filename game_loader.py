@@ -12,5 +12,6 @@ class Game:
         self.task = asyncio.create_task(self.game_module.on_start(ctx))
 
     def update(self, ctx: Context) -> None:
-        self.game_module.on_update(ctx)
+        if hasattr(self.game_module, 'on_update'):
+            self.game_module.on_update(ctx)
     

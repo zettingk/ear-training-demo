@@ -17,6 +17,17 @@ def generate_id():
 pygame.font.init()
 FONT = pygame.font.SysFont("Arial", 64)
 
+T = TypeVar('T')
+def _queue_to_list(q: asyncio.Queue[T]) -> list[T]:
+    result = []
+
+    try:
+        while True:
+            result.append(q.get_nowait())
+    except asyncio.QueueEmpty:
+        return result
+
+
 class Context:
     '''
     Instances of Context are passed down to the start function of game modules.
@@ -33,6 +44,7 @@ class Context:
         self.callbacks = []
         self.event_handlers = []
         self.await_queues = []
+        self.gather_queues = []
 
     def draw_text(self, text: str, position: tuple[int, int], color=(0, 0, 0)):
         rendered_text = FONT.render(text, True, color)
@@ -94,7 +106,39 @@ class Context:
                     queue.put_nowait(event)
                 except asyncio.QueueFull:
                     pass
+
+        for _, eventType, event_filter, queue in self.gather_queues:
+            if isinstance(event, eventType) and event_filter(event):
+                try:
+                    queue.put_nowait(event)
+                except asyncio.QueueFull:
+                    pass
                 
+    Y = TypeVar("Y")
+    def begin_gather(self, eventType: Type[Y], max_amount: int = 0, event_filter: Callable[[Y], bool] = lambda _: True) -> int:
+        queue = asyncio.Queue(max_amount)
+        queue_id = generate_id()
+        self.gather_queues.append((queue_id, eventType, event_filter, queue))
+        
+        return queue_id
+
+    def end_gather(self, queue_id: int) -> list[Event]: # type: ignore
+        result_tup = None
+        result = None
+
+        for tup in self.gather_queues:
+            current_id, _, _, queue = tup
+            if current_id == queue_id:
+                result = _queue_to_list(queue)
+                result_tup = tup
+
+        if result_tup is None or result is None:
+            raise ValueError
+        
+        self.gather_queues.remove(result_tup)
+
+        return result
+
 
     T = TypeVar("T")
     async def await_events(self, eventType: Type[T], amount: int, event_filter: Callable[[T], bool] = lambda _: True) -> list[T]:
