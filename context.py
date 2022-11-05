@@ -15,7 +15,7 @@ def generate_id():
     return prev_id
 
 pygame.font.init()
-FONT = pygame.font.SysFont("Arial", 12)
+FONT = pygame.font.SysFont("Arial", 64)
 
 class Context:
     '''
@@ -34,8 +34,8 @@ class Context:
         self.event_handlers = []
         self.await_queues = []
 
-    def draw_text(self, text: str, position: tuple[int, int]):
-        rendered_text = FONT.render(text, True, (0, 0, 0))
+    def draw_text(self, text: str, position: tuple[int, int], color=(0, 0, 0)):
+        rendered_text = FONT.render(text, True, color)
         self.draw_surface(rendered_text, position)
 
     def draw_surface(self, surf: pygame.surface.Surface, position: tuple[int, int]):

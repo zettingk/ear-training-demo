@@ -6,7 +6,7 @@ import pygame
 import pygame.midi
 from events import KeyEvent, KeystrokeEvent
 from emulator import KeyboardEmulator
-
+from game_loader import Game
 
 pygame.init()
 pygame.display.init()
@@ -21,12 +21,12 @@ def is_mouse_pressed() -> bool:
 
 
 async def main() -> None:
-    from game import game1
+    game = Game('game1')
 
     window = pygame.display.set_mode((800, 600))
 
     ctx = Context(window)
-    asyncio.create_task(game1.on_start(ctx))
+    game.begin(ctx)
 
     midi_input_id = pygame.midi.get_default_input_id()
     midi_input = None    
@@ -53,7 +53,7 @@ async def main() -> None:
                 ctx.fire_events(KeystrokeEvent(event.key, False))
 
         window.fill(BACKGROUND_COLOR)
-        game1.on_update(ctx)
+        game.update(ctx)
     
         if midi_input is not None:
             while midi_input.poll():

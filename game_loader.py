@@ -1,11 +1,16 @@
 import importlib
 import asyncio
 
+from context import Context
 
 class Game:
     def __init__(self, name: str):
         self.game_module = importlib.import_module("." + name, "game")
+        self.task = None
 
-    async def begin(self):
-        print(dir(self.game_module))
-        await asyncio.create_task(self.game_module.starter())
+    def begin(self, ctx: Context) -> None:
+        self.task = asyncio.create_task(self.game_module.on_start(ctx))
+
+    def update(self, ctx: Context) -> None:
+        self.game_module.on_update(ctx)
+    
