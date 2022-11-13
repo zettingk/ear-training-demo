@@ -11,6 +11,15 @@ NOTE_OFFSET = {
     "B": 10
 }
 
+DIATONIC_NOTE_OFFSET = {
+    "C": 0,
+    "D": 1,
+    "E": 2,
+    "F": 3, 
+    "G": 4,
+    "A": 5,
+    "B": 6
+}
 
 def _get_key_from_value(d: dict[Any, Any], val: Any) -> Any:
     return [k for k, v in d.items() if v == val][0]
@@ -23,6 +32,23 @@ def generate_notes(*, variability: int, base: int) -> Generator[int, None, None]
 
         increment_by = randint(-variability, variability)
         current_base = max(0, min(127, current_base + increment_by)) # make sure value is between 0-127
+
+def chromatic_to_diatonic(note: int) -> tuple[int, bool]:
+    sharp = False
+
+    if is_black(note):
+        sharp = True
+        note -= 1
+
+    octaves = note // 12
+
+    [key] = _get_key_from_value(NOTE_OFFSET, note % 12)
+
+    result = octaves * 7 + DIATONIC_NOTE_OFFSET[key]
+    
+
+    return result, sharp
+
 
 def is_white(note: int) -> bool:
     return note % 12 in NOTE_OFFSET.values()

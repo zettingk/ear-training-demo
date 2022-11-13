@@ -1,7 +1,20 @@
 import importlib
+import os
 import asyncio
 
 from context import Context
+
+cached_games = None
+
+def reload_games() -> None:
+    global cached_games
+    cached_games = list(map(lambda g: g.removesuffix(".py"), filter(lambda g: g != '__pycache__', os.listdir('game/'))))
+
+def get_games() -> list[str]:
+    if cached_games is None:
+        reload_games()
+
+    return cached_games # type: ignore
 
 class Game:
     def __init__(self, name: str):

@@ -1,4 +1,5 @@
 import sys
+import argparse
 import audio
 from context import Context
 import asyncio
@@ -7,6 +8,7 @@ import pygame.midi
 from events import KeyEvent, KeystrokeEvent
 from emulator import KeyboardEmulator
 from game_loader import Game
+
 
 pygame.init()
 pygame.display.init()
@@ -20,10 +22,21 @@ def is_mouse_pressed() -> bool:
     return pygame.mouse.get_pressed()[0]
 
 
-async def main() -> None:
-    game = Game('trills')
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+                    prog = 'ear-training',
+                    description = 'Play games to practise your musical skills!',
+                    )
+    
+    parser.add_argument("game_name")
+    return parser.parse_args()
 
-    window = pygame.display.set_mode((800, 600))
+async def main() -> None:
+    args = parse_args()
+
+    game = Game(args.game_name)
+
+    window = pygame.display.set_mode((800, 600), pygame.RESIZABLE)
 
     ctx = Context(window)
     game.begin(ctx)
@@ -79,7 +92,6 @@ async def main() -> None:
                 
                 keyboard_emulator.keys_pressed = set()
             keyboard_emulator.draw()
-
 
         pygame.display.update()
         await asyncio.sleep(0) # allow game coroutines to run

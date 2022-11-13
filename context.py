@@ -1,7 +1,11 @@
 import asyncio
+from dataclasses import dataclass
+from functools import cache
+from math import ceil
 import pygame
 from typing import Type, TypeVar, Callable
 from events import Event
+from notes import chromatic_to_diatonic
 
 prev_id = 0
 
@@ -14,8 +18,6 @@ def generate_id():
 
     return prev_id
 
-pygame.font.init()
-FONT = pygame.font.SysFont("Arial", 64)
 
 T = TypeVar('T')
 def _queue_to_list(q: asyncio.Queue[T]) -> list[T]:
@@ -27,6 +29,20 @@ def _queue_to_list(q: asyncio.Queue[T]) -> list[T]:
     except asyncio.QueueEmpty:
         return result
 
+pygame.font.init()
+
+@cache
+def get_font(fontname: str, size: int, bold: bool, italic: bool):
+    return pygame.font.SysFont(fontname, size, bold, italic)
+
+
+treble_cleff = pygame.image.load("images/treble_cleff.png")
+sharp_img = pygame.image.load("images/sharp.png")
+
+@dataclass
+class VisualNote:
+    note: int
+    color: pygame.color.Color
 
 class Context:
     '''
@@ -46,12 +62,62 @@ class Context:
         self.await_queues = []
         self.gather_queues = []
 
-    def draw_text(self, text: str, position: tuple[int, int], color=(0, 0, 0)):
-        rendered_text = FONT.render(text, True, color)
+    def get_surf_size(self) -> tuple[int, int]:
+        return self.surface.get_size()
+
+    def draw_text(self, fontname: str, size: int, text: str, position: tuple[int, int], color, bold: bool = False, italic: bool = False, antialias: bool = True):
+        rendered_text = get_font(fontname, size, bold, italic).render(text, antialias, color)
         self.draw_surface(rendered_text, position)
 
     def draw_surface(self, surf: pygame.surface.Surface, position: tuple[int, int]):
         self.surface.blit(surf, position)
+
+    def draw_staff(self, rect: pygame.rect.Rect, notes: list[list[VisualNote]], fit_notes: int):
+        x, y, width, height = rect
+        line_thickness = ceil(height / 40)
+
+        y_offset = height / 4
+
+        for i in range(5):
+            pygame.draw.line(self.surface, (0, 0, 0), (x, y + y_offset * i), (x + width, y + y_offset * i), line_thickness)
+
+        clef_width = height * 0.5
+        clef_height = height * 1.3
+        self.surface.blit(pygame.transform.scale(treble_cleff, (clef_width, clef_height)), (x, y))
+
+        x_start = x + clef_width * 1.5
+        x_end = x + width
+
+        x_offset = (x_end - x_start) / (fit_notes)
+        
+        for i, chord in enumerate(notes):
+            for note in chord:
+                diatonic, sharp = chromatic_to_diatonic(note.note)
+                note_y = y + int(y_offset / 2 * -(diatonic - 37))
+                note_x = int(x_start + x_offset * i)
+                note_width = int(height * 0.35)
+                note_height = int(height * 0.25)
+
+                if sharp:
+                    self.surface.blit(pygame.transform.scale(sharp_img, (int(note_height * 0.75), note_height * 1.5)), (note_x + note_width, note_y - note_height * 0.25))
+            
+                if diatonic < 29:
+                    n_lines = (30 - diatonic) // 2
+
+                    initial_line = y + int(y_offset / 2 * 9) + note_height / 2
+
+                    for i in range(n_lines):
+                        pygame.draw.line(self.surface, (0, 0, 0), (note_x - note_width * 0.2, initial_line + y_offset * i), (note_x + note_width * 1.2, initial_line + y_offset * i), line_thickness)
+
+                elif diatonic > 39:
+                    n_lines = (diatonic - 38) // 2
+
+                    initial_line = y - int(y_offset / 2 * 3) + note_height / 2
+
+                    for i in range(n_lines):
+                        pygame.draw.line(self.surface, (0, 0, 0), (note_x - note_width * 0.2, initial_line - y_offset * i), (note_x + note_width * 1.2, initial_line - y_offset * i), line_thickness)
+
+                pygame.draw.ellipse(self.surface, note.color, (note_x, note_y, note_width, note_height))
 
     def cancel(self, handler_id: int) -> None:
         '''
