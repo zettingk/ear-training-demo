@@ -11,7 +11,7 @@ to_draw: list[tuple[int, float]] = []
 clock = pygame.time.Clock()
 
 async def on_key_press(evt: KeyEvent):
-    if evt.velocity == 0: return
+    if not evt.pressing: return
     if len(to_draw) == 0: return
 
     if to_draw[0][0] == evt.key:

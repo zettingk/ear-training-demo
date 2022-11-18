@@ -12,6 +12,7 @@ class MidiEvent(Event):
 class KeyEvent(MidiEvent):
     key: int
     velocity: int
+    pressing: bool
 
 @dataclass
 class KeystrokeEvent(Event):

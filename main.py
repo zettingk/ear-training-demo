@@ -73,21 +73,21 @@ async def main() -> None:
                 events = midi_input.read(10)
 
                 for evt in events:
-                    [[_, note_num, velocity, _], _] = evt # type: ignore
+                    [[pressing, note_num, velocity, _], _] = evt # type: ignore
                     
-                    ctx.fire_events(KeyEvent(note_num, velocity))
+                    ctx.fire_events(KeyEvent(note_num, velocity, pressing==144))
         elif keyboard_emulator is not None:
             if is_mouse_pressed():
                 hovering_over = keyboard_emulator.key_at_pos(pygame.mouse.get_pos())
 
                 if hovering_over is not None and hovering_over not in keyboard_emulator.keys_pressed:
-                    ctx.fire_events(KeyEvent(hovering_over, 127))
+                    ctx.fire_events(KeyEvent(hovering_over, 127, True))
                     audio.note_on(hovering_over, 127)
 
                     keyboard_emulator.keys_pressed.add(hovering_over)
             else:
                 for k in keyboard_emulator.keys_pressed:
-                    ctx.fire_events(KeyEvent(k, 0))
+                    ctx.fire_events(KeyEvent(k, 0, False))
                     audio.note_off(k)
                 
                 keyboard_emulator.keys_pressed = set()

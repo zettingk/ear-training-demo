@@ -8,7 +8,7 @@ NOTE_OFFSET = {
     "F": 5, 
     "G": 7,
     "A": 9,
-    "B": 10
+    "B": 11
 }
 
 DIATONIC_NOTE_OFFSET = {

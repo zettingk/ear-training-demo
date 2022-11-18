@@ -35,7 +35,7 @@ async def on_start(ctx: Context) -> None:
             audio.note_off(note)
 
         for i, note in enumerate(notes):
-            [key_event] = await ctx.await_events(KeyEvent, 1, lambda e: e.velocity != 0)
+            [key_event] = await ctx.await_events(KeyEvent, 1, lambda e: e.pressing)
             offset = i * (1 / (len(notes) - 1))
 
             if key_event.key == note:
