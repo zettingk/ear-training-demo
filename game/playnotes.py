@@ -4,6 +4,7 @@ from context import VisualNote, Context
 
 from events import KeyEvent
 from notes import note_from_str, generate_notes
+from context import TREBLE_CLEFF
 
 import audio
 
@@ -11,11 +12,13 @@ import audio
 BASE_NOTE = note_from_str("C")
 SEQUENCE_LENGTH = 4
 
-to_draw: list[list[VisualNote]] = []
+to_draw: list[VisualNote] = []
 
 def on_update(ctx: Context) -> None:
-    surf_width, surf_height = ctx.get_surf_size()
-    ctx.draw_staff(pygame.rect.Rect(surf_width * 0.1, surf_height / 2 - surf_width * 0.05, surf_width * 0.8, surf_width * 0.1), to_draw, SEQUENCE_LENGTH)
+    surf_width, surf_height = ctx.brush.surface.get_size()
+    staff_rect = pygame.rect.Rect(surf_width * 0.1, surf_height / 2 - surf_width * 0.05, surf_width * 0.8, surf_width * 0.1)
+
+    ctx.brush.draw_staff(TREBLE_CLEFF, 30, staff_rect, to_draw)
 
 async def on_start(ctx: Context) -> None:
     global to_draw
@@ -31,16 +34,14 @@ async def on_start(ctx: Context) -> None:
             await asyncio.sleep(1)
             audio.note_off(note)
 
-        for note in notes:
+        for i, note in enumerate(notes):
             [key_event] = await ctx.await_events(KeyEvent, 1, lambda e: e.velocity != 0)
+            offset = i * (1 / (len(notes) - 1))
 
             if key_event.key == note:
-                to_draw.append([VisualNote(note, pygame.color.Color(0, 255, 0))])
+                to_draw.append(VisualNote(note, pygame.color.Color(0, 255, 0), offset))
             else:
-                to_draw.append([
-                    VisualNote(note, pygame.color.Color(255, 0, 0))
-                ])
-                
+                to_draw.append(VisualNote(note, pygame.color.Color(255, 0, 0), offset))
 
         await asyncio.sleep(3)
 

@@ -3,15 +3,13 @@ from dataclasses import dataclass
 from functools import cache
 from math import ceil
 import pygame
-from typing import Type, TypeVar, Callable
+from typing import Type, TypeVar, Callable, Iterable
 from events import Event
 from notes import chromatic_to_diatonic
 
+
+
 prev_id = 0
-
-async def foo():
-    return 1
-
 def generate_id():
     global prev_id
     prev_id += 1
@@ -29,20 +27,121 @@ def _queue_to_list(q: asyncio.Queue[T]) -> list[T]:
     except asyncio.QueueEmpty:
         return result
 
+
 pygame.font.init()
+
 
 @cache
 def get_font(fontname: str, size: int, bold: bool, italic: bool):
     return pygame.font.SysFont(fontname, size, bold, italic)
 
 
-treble_cleff = pygame.image.load("images/treble_cleff.png")
-sharp_img = pygame.image.load("images/sharp.png")
-
 @dataclass
 class VisualNote:
     note: int
     color: pygame.color.Color
+    offset: float | None = None
+
+
+@dataclass
+class Clef:
+    g_position: int
+    lines: int
+    symbol: pygame.surface.Surface
+    poke_out_point: int
+    dip_point: int
+
+
+TREBLE_CLEFF = Clef(
+    g_position=2,
+    lines=5,
+    symbol=pygame.image.load('images/treble_cleff.png'),
+    poke_out_point=110,
+    dip_point=432
+)
+
+
+sharp_img = pygame.image.load("images/sharp.png")
+
+
+def _interpolate(val: float, from_low: float, from_high: float, to_low: float, to_high: float):
+    return (val - from_low) / (from_high - from_low) * (to_high - to_low) + to_low
+
+
+@dataclass
+class Brush:
+    surface: pygame.surface.Surface
+
+    def draw_text(self, fontname: str, size: int, text: str, position: tuple[int, int], color, bold: bool = False, italic: bool = False, antialias: bool = True):
+        rendered_text = get_font(fontname, size, bold, italic).render(text, antialias, color)
+        self.surface.blit(rendered_text, position)
+
+    def _draw_horizontal_lines(self, y_start: int, line_offset: int, n_lines: int, x_start: int, x_end: int, thickness: int):
+        for i in range(n_lines):
+            y = y_start + line_offset * i
+            pygame.draw.line(self.surface, (0, 0, 0), (x_start, y), (x_end, y), thickness)
+
+    def draw_staff(self, clef: Clef, line_offset: int, rect: pygame.rect.Rect, notes: Iterable[VisualNote]):
+        x, y, width, height = rect
+        line_thickness = ceil(line_offset * 0.05)
+
+        y_start = int(y + 0.5 * (height - (clef.lines - 1) * line_offset)) # (n - 1) spaces for n lines
+
+        self._draw_horizontal_lines(y_start, line_offset, clef.lines, x, x + width, line_thickness)
+
+        y_end = y_start + line_offset * (clef.lines - 1)
+
+        clef_width, clef_height = clef.symbol.get_size()
+
+        clef_start = _interpolate(0, clef.poke_out_point, clef.dip_point, y_start, y_end)
+        clef_end = _interpolate(clef_height, clef.poke_out_point, clef.dip_point, y_start, y_end)
+
+        new_height = clef_end - clef_start
+        new_width = new_height * (clef_width / clef_height)
+
+        scaled_clef = pygame.transform.scale(clef.symbol, (new_width, new_height))
+
+        note_width = line_offset * 1.25
+
+        extra_line_jut_out = 0.2
+
+        remaining_x_start = x + new_width
+        remaining_width = x + width - remaining_x_start - note_width * (1 + extra_line_jut_out) - note_width * extra_line_jut_out
+
+        sharp_symbol = pygame.transform.scale(sharp_img, (int(line_offset * 0.75), line_offset * 1.5))
+
+        for n in notes:
+            if n.offset is not None:
+                diatonic, sharp = chromatic_to_diatonic(n.note)
+                where_32 = clef.g_position
+                where_note = where_32 + (diatonic - 32)
+
+                note_x = extra_line_jut_out * note_width + remaining_x_start + int(n.offset * remaining_width)
+                note_y = y_end - (line_offset / 2) * (where_note + 1)
+
+                note_rect = pygame.rect.Rect(note_x, note_y, note_width, line_offset)
+
+                line_start_x = int(note_x - note_width * extra_line_jut_out)
+                line_end_x = int(note_x + note_width * (1 + extra_line_jut_out))
+
+                if where_note <= -2:
+                    # draw extra lines under staff
+                    n_extra_lines = -where_note // 2
+                    first_line = y_end + line_offset
+                    self._draw_horizontal_lines(first_line, line_offset, n_extra_lines, line_start_x, line_end_x, line_thickness)
+                elif where_note >= clef.lines * 2:
+                    # draw extra lines over staff
+                    n_extra_lines = (where_note - (clef.lines - 1) * 2) // 2
+                    first_line = y_start - line_offset
+                    self._draw_horizontal_lines(first_line, -line_offset, n_extra_lines, line_start_x, line_end_x, line_thickness)
+
+                if sharp == True:
+                    self.surface.blit(sharp_symbol, (note_x + note_width, note_y - line_offset * 0.25))
+
+                pygame.draw.ellipse(self.surface, n.color, note_rect)
+
+        self.surface.blit(scaled_clef, (x, clef_start))
+
 
 class Context:
     '''
@@ -56,68 +155,11 @@ class Context:
     '''
 
     def __init__(self, surface: pygame.surface.Surface):
-        self.surface = surface
         self.callbacks = []
         self.event_handlers = []
         self.await_queues = []
         self.gather_queues = []
-
-    def get_surf_size(self) -> tuple[int, int]:
-        return self.surface.get_size()
-
-    def draw_text(self, fontname: str, size: int, text: str, position: tuple[int, int], color, bold: bool = False, italic: bool = False, antialias: bool = True):
-        rendered_text = get_font(fontname, size, bold, italic).render(text, antialias, color)
-        self.draw_surface(rendered_text, position)
-
-    def draw_surface(self, surf: pygame.surface.Surface, position: tuple[int, int]):
-        self.surface.blit(surf, position)
-
-    def draw_staff(self, rect: pygame.rect.Rect, notes: list[list[VisualNote]], fit_notes: int):
-        x, y, width, height = rect
-        line_thickness = ceil(height / 40)
-
-        y_offset = height / 4
-
-        for i in range(5):
-            pygame.draw.line(self.surface, (0, 0, 0), (x, y + y_offset * i), (x + width, y + y_offset * i), line_thickness)
-
-        clef_width = height * 0.5
-        clef_height = height * 1.3
-        self.surface.blit(pygame.transform.scale(treble_cleff, (clef_width, clef_height)), (x, y))
-
-        x_start = x + clef_width * 1.5
-        x_end = x + width
-
-        x_offset = (x_end - x_start) / (fit_notes)
-        
-        for i, chord in enumerate(notes):
-            for note in chord:
-                diatonic, sharp = chromatic_to_diatonic(note.note)
-                note_y = y + int(y_offset / 2 * -(diatonic - 37))
-                note_x = int(x_start + x_offset * i)
-                note_width = int(height * 0.35)
-                note_height = int(height * 0.25)
-
-                if sharp:
-                    self.surface.blit(pygame.transform.scale(sharp_img, (int(note_height * 0.75), note_height * 1.5)), (note_x + note_width, note_y - note_height * 0.25))
-            
-                if diatonic < 29:
-                    n_lines = (30 - diatonic) // 2
-
-                    initial_line = y + int(y_offset / 2 * 9) + note_height / 2
-
-                    for i in range(n_lines):
-                        pygame.draw.line(self.surface, (0, 0, 0), (note_x - note_width * 0.2, initial_line + y_offset * i), (note_x + note_width * 1.2, initial_line + y_offset * i), line_thickness)
-
-                elif diatonic > 39:
-                    n_lines = (diatonic - 38) // 2
-
-                    initial_line = y - int(y_offset / 2 * 3) + note_height / 2
-
-                    for i in range(n_lines):
-                        pygame.draw.line(self.surface, (0, 0, 0), (note_x - note_width * 0.2, initial_line - y_offset * i), (note_x + note_width * 1.2, initial_line - y_offset * i), line_thickness)
-
-                pygame.draw.ellipse(self.surface, note.color, (note_x, note_y, note_width, note_height))
+        self.brush = Brush(surface)
 
     def cancel(self, handler_id: int) -> None:
         '''
@@ -220,3 +262,4 @@ class Context:
         self.await_queues.remove((eventType, event_filter, queue))
         
         return results
+
